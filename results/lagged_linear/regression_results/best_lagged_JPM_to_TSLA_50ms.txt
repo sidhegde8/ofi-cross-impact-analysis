@@ -1,0 +1,27 @@
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:           price_change   R-squared:                       0.000
+Model:                            OLS   Adj. R-squared:                  0.000
+Method:                 Least Squares   F-statistic:                     3.586
+Date:                Wed, 08 Jan 2025   Prob (F-statistic):             0.0583
+Time:                        06:57:57   Log-Likelihood:             3.5958e+05
+No. Observations:              139884   AIC:                        -7.191e+05
+Df Residuals:                  139882   BIC:                        -7.191e+05
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+==================================================================================
+                     coef    std err          t      P>|t|      [0.025      0.975]
+----------------------------------------------------------------------------------
+const           -9.68e-05   4.95e-05     -1.956      0.050      -0.000    1.98e-07
+ofi_pca_lagged  8.127e-08   4.29e-08      1.894      0.058   -2.85e-09    1.65e-07
+==============================================================================
+Omnibus:                    80435.554   Durbin-Watson:                   1.022
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):        396375270.098
+Skew:                          -0.997   Prob(JB):                         0.00
+Kurtosis:                     263.773   Cond. No.                     1.15e+03
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 1.15e+03. This might indicate that there are
+strong multicollinearity or other numerical problems.
