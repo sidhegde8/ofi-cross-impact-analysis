@@ -1,0 +1,2 @@
+Self-Impact R-squared (XOM → XOM): 1.5173796530376649e-07
+Cross-Impact R-squared (XOM → TSLA): 6.996365338185484e-07

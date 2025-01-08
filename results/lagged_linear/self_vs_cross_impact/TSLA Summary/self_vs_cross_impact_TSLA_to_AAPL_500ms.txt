@@ -1,0 +1,2 @@
+Self-Impact R-squared (TSLA → TSLA): 1.6891585244982465e-06
+Cross-Impact R-squared (TSLA → AAPL): 3.0675105622268717e-07
