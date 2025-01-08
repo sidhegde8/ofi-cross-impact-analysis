@@ -11,7 +11,15 @@ import seaborn as sns
 # Set up directories
 input_folder = 'data/parquet'  # Update this path to your input folder
 output_folder = 'results'      # Update this path to your output folder
+lagged_linear_folder = os.path.join(output_folder, 'lagged_linear')  # Subfolder for lagged linear analysis
+regression_results_folder = os.path.join(lagged_linear_folder, 'regression_results')  # Subfolder for regression results
+plots_folder = os.path.join(lagged_linear_folder, 'plots')  # Subfolder for plots
+
+# Create directories if they don't exist
 os.makedirs(output_folder, exist_ok=True)
+os.makedirs(lagged_linear_folder, exist_ok=True)
+os.makedirs(regression_results_folder, exist_ok=True)
+os.makedirs(plots_folder, exist_ok=True)
 
 # Initialize Dask client
 def initialize_dask_client():
@@ -139,8 +147,11 @@ def save_regression_results(model, filename):
         print(f"Warning: No model to save for {filename}.")
         return
 
-    with open(os.path.join(output_folder, filename), 'w') as f:
+    # Save to the regression_results subfolder
+    output_path = os.path.join(regression_results_folder, filename)
+    with open(output_path, 'w') as f:
         f.write(model.summary().as_text())
+    print(f"Regression results saved to: {output_path}")
 
 # Visualize R-squared vs. Lag
 def visualize_r_squared(lags, r_squared_values, stock_a, stock_b):
@@ -153,8 +164,12 @@ def visualize_r_squared(lags, r_squared_values, stock_a, stock_b):
     plt.xlabel('Lag Interval')
     plt.ylabel('R-squared')
     plt.grid(True)
-    plt.savefig(os.path.join(output_folder, f'r_squared_vs_lag_{stock_a}_to_{stock_b}.png'))
+
+    # Save to the plots subfolder
+    output_path = os.path.join(plots_folder, f'r_squared_vs_lag_{stock_a}_to_{stock_b}.png')
+    plt.savefig(output_path)
     plt.close()
+    print(f"Plot saved to: {output_path}")
 
 # Main function
 def main():
