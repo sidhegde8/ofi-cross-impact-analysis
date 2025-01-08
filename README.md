@@ -56,3 +56,10 @@ The data can be obtained from [Databento](https://databento.com/) using the Nasd
 ```bash
 git clone https://github.com/your-username/cross-impact-analysis.git
 cd cross-impact-analysis
+```
+### 2. Install Dependencies
+Install the required Python packages that are essential for running the code:
+```bash
+pip install -r requirements.txt
+```
+## Running the Analysis
