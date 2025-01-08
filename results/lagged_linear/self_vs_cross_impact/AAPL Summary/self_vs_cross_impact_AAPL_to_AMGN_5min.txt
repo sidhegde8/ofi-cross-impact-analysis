@@ -1,0 +1,2 @@
+Self-Impact R-squared (AAPL → AAPL): 1.7198971935528107e-07
+Cross-Impact R-squared (AAPL → AMGN): 1.803238740216706e-06

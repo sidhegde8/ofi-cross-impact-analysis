@@ -1,0 +1,2 @@
+Self-Impact R-squared (AMGN → AMGN): 6.082759548942107e-06
+Cross-Impact R-squared (AMGN → TSLA): 6.96812488142351e-05
