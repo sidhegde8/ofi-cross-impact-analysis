@@ -15,7 +15,8 @@ output_folder = 'results/contemporaneous_cross_impact'  # Main folder for result
 subfolders = [
     'regression_results',  # For regression results (text files)
     'visualizations',      # For scatter plots and visualizations
-    'summary_statistics'   # For aggregated results or summary statistics
+    'summary_statistics',  # For aggregated results or summary statistics
+    'self_vs_cross_impact' # For self-impact vs. cross-impact comparisons
 ]
 
 for folder in subfolders:
@@ -134,39 +135,62 @@ def contemporaneous_cross_impact(data, stock_a, stock_b):
 
     return model, merged_data
 
-def visualize_contemporaneous_impact(model, merged_data, stock_a, stock_b, output_folder):
+def self_impact(data, stock):
     """
-    Visualize the contemporaneous cross-impact relationship.
+    Analyze the contemporaneous self-impact of OFI on price changes.
     """
-    plt.figure(figsize=(10, 6))
-    sns.regplot(x=merged_data['ofi_pca'], y=merged_data['price_change'], scatter_kws={'alpha': 0.5})
-    plt.title(f'Contemporaneous Cross-Impact: {stock_a} → {stock_b}')
-    plt.xlabel(f'OFI of {stock_a}')
-    plt.ylabel(f'Price Change of {stock_b}')
-    plt.grid(True)
-    
-    # Save the plot
-    plot_filename = os.path.join(output_folder, 'visualizations', f'contemporaneous_impact_{stock_a}_to_{stock_b}.png')
-    plt.savefig(plot_filename, bbox_inches='tight')
-    plt.close()
+    # Filter data for the stock
+    stock_data = data[data['symbol'] == stock][['ts_recv', 'ofi_pca', 'price_change']]
 
-def save_regression_results(model, stock_a, stock_b, output_folder):
-    """
-    Save regression results to a text file.
-    """
-    results_filename = os.path.join(output_folder, 'regression_results', f'regression_results_{stock_a}_to_{stock_b}.txt')
-    with open(results_filename, 'w') as f:
-        f.write(model.summary().as_text())
+    # Drop rows with NaN values
+    stock_data = stock_data.dropna()
 
-def save_summary_statistics(data, stock_a, stock_b, output_folder):
+    # Check if there is sufficient variation in the data
+    if stock_data['price_change'].nunique() < 2 or stock_data['ofi_pca'].nunique() < 2:
+        print(f"Warning: Insufficient variation in data for {stock} → {stock}. Skipping regression.")
+        return None, None
+
+    # Perform regression
+    X = sm.add_constant(stock_data['ofi_pca'])  # Independent variable: OFI of stock
+    y = stock_data['price_change']  # Dependent variable: Price change of stock
+    model = sm.OLS(y, X).fit()
+
+    return model, stock_data
+
+def compare_self_vs_cross_impact(data, stock_a, stock_b):
     """
-    Save summary statistics for the merged data.
+    Compare self-impact (stock_a → stock_a) vs. cross-impact (stock_a → stock_b).
     """
-    summary_stats = data.describe().to_string()
-    stats_filename = os.path.join(output_folder, 'summary_statistics', f'summary_stats_{stock_a}_to_{stock_b}.txt')
-    with open(stats_filename, 'w') as f:
-        f.write(f"Summary Statistics for {stock_a} → {stock_b}:\n")
-        f.write(summary_stats)
+    # Analyze self-impact
+    self_model, self_data = self_impact(data, stock_a)
+    if self_model is not None:
+        self_r_squared = self_model.rsquared
+        print(f"Self-Impact R-squared ({stock_a} → {stock_a}): {self_r_squared}")
+    else:
+        self_r_squared = None
+
+    # Analyze cross-impact
+    cross_model, cross_data = contemporaneous_cross_impact(data, stock_a, stock_b)
+    if cross_model is not None:
+        cross_r_squared = cross_model.rsquared
+        print(f"Cross-Impact R-squared ({stock_a} → {stock_b}): {cross_r_squared}")
+    else:
+        cross_r_squared = None
+
+    # Save comparison results
+    if self_r_squared is not None and cross_r_squared is not None:
+        with open(os.path.join(output_folder, 'self_vs_cross_impact', f'self_vs_cross_impact_{stock_a}_to_{stock_b}.txt'), 'w') as f:
+            f.write(f"Self-Impact R-squared ({stock_a} → {stock_a}): {self_r_squared}\n")
+            f.write(f"Cross-Impact R-squared ({stock_a} → {stock_b}): {cross_r_squared}\n")
+
+        # Visualize comparison
+        plt.figure(figsize=(8, 6))
+        plt.bar(['Self-Impact', 'Cross-Impact'], [self_r_squared, cross_r_squared], color=['blue', 'orange'])
+        plt.title(f'Self-Impact vs. Cross-Impact: {stock_a} → {stock_b}')
+        plt.ylabel('R-squared')
+        plt.grid(True)
+        plt.savefig(os.path.join(output_folder, 'self_vs_cross_impact', f'self_vs_cross_impact_{stock_a}_to_{stock_b}.png'))
+        plt.close()
 
 def main():
     freeze_support()  # Required for Windows/macOS
@@ -210,6 +234,13 @@ def main():
                             print(f"Skipping {stock_a} → {stock_b} due to insufficient data.")
                     except Exception as e:
                         print(f"Error analyzing {stock_a} → {stock_b}: {str(e)}")
+
+        # Compare self-impact vs. cross-impact for all pairs of stocks
+        for stock_a in stocks:
+            for stock_b in stocks:
+                if stock_a != stock_b:
+                    print(f"Comparing self-impact vs. cross-impact: {stock_a} → {stock_b}")
+                    compare_self_vs_cross_impact(data, stock_a, stock_b)
 
         print("Contemporaneous cross-impact analysis complete. Results saved to:", output_folder)
 
