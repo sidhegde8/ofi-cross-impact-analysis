@@ -14,14 +14,15 @@ output_folder = 'results'      # Update this path to your output folder
 lagged_linear_folder = os.path.join(output_folder, 'lagged_linear')  # Subfolder for lagged linear analysis
 regression_results_folder = os.path.join(lagged_linear_folder, 'regression_results')  # Subfolder for regression results
 plots_folder = os.path.join(lagged_linear_folder, 'plots')  # Subfolder for plots
+self_vs_cross_folder = os.path.join(lagged_linear_folder, 'self_vs_cross_impact')  # Subfolder for self vs. cross-impact
 
 # Create directories if they don't exist
 os.makedirs(output_folder, exist_ok=True)
 os.makedirs(lagged_linear_folder, exist_ok=True)
 os.makedirs(regression_results_folder, exist_ok=True)
 os.makedirs(plots_folder, exist_ok=True)
+os.makedirs(self_vs_cross_folder, exist_ok=True)
 
-# Initialize Dask client
 def initialize_dask_client():
     """
     Initialize a Dask client with a LocalCluster.
@@ -31,7 +32,6 @@ def initialize_dask_client():
     client = Client(cluster)
     return client
 
-# Load processed data using Dask
 def load_processed_data(input_folder):
     """
     Load all processed Parquet files from the input folder using Dask.
@@ -63,7 +63,6 @@ def load_processed_data(input_folder):
 
     return data
 
-# Process data in chunks
 def process_chunk(chunk):
     """
     Process a chunk of data:
@@ -71,9 +70,6 @@ def process_chunk(chunk):
     - Resample to a regular time series.
     - Compute mid-price and price changes.
     """
-    # Print column names for debugging
-    print("Columns in the chunk before processing:", chunk.columns.tolist())
-
     # Remove duplicate timestamps
     chunk = chunk[~chunk.index.duplicated(keep='first')]
 
@@ -87,17 +83,11 @@ def process_chunk(chunk):
     # Reset the index to make 'ts_recv' a column again
     chunk = chunk.reset_index()
 
-    # Print column names for debugging
-    print("Columns in the chunk after processing:", chunk.columns.tolist())
-
-    # Verify that 'price_change' does not contain unexpected NaN values
-    if chunk['price_change'].isna().any():
-        print("Warning: NaN values found in 'price_change'. Filling with 0.")
-        chunk['price_change'] = chunk['price_change'].fillna(0)
+    # Fill NaN values
+    chunk['price_change'] = chunk['price_change'].fillna(0)
 
     return chunk
 
-# Analyze lagged cross-impact
 def lagged_cross_impact(data, stock_a, stock_b, lag='50ms'):
     """
     Analyze how the OFI of one stock affects the price changes of another stock at a future time horizon.
@@ -138,40 +128,67 @@ def lagged_cross_impact(data, stock_a, stock_b, lag='50ms'):
 
     return model
 
-# Save regression results
-def save_regression_results(model, filename):
+def self_impact(data, stock, lag='50ms'):
     """
-    Save regression results to a text file.
+    Analyze how the OFI of a stock affects its own price changes at a future time horizon.
     """
-    if model is None:
-        print(f"Warning: No model to save for {filename}.")
-        return
+    # Filter data for the stock
+    stock_data = data[data['symbol'] == stock][['ts_recv', 'ofi_pca', 'price_change']]
 
-    # Save to the regression_results subfolder
-    output_path = os.path.join(regression_results_folder, filename)
-    with open(output_path, 'w') as f:
-        f.write(model.summary().as_text())
-    print(f"Regression results saved to: {output_path}")
+    # Shift OFI values by the specified lag
+    stock_data['ts_recv'] = stock_data['ts_recv'] + pd.Timedelta(lag)
+    stock_data = stock_data.rename(columns={'ofi_pca': 'ofi_pca_lagged'})
 
-# Visualize R-squared vs. Lag
-def visualize_r_squared(lags, r_squared_values, stock_a, stock_b):
+    # Drop rows with NaN values
+    stock_data = stock_data.dropna()
+
+    # Check if there is sufficient variation in the data
+    if stock_data['price_change'].nunique() < 2 or stock_data['ofi_pca_lagged'].nunique() < 2:
+        print(f"Warning: Insufficient variation in data for {stock} → {stock}. Skipping regression.")
+        return None
+
+    # Perform regression
+    X = sm.add_constant(stock_data['ofi_pca_lagged'])
+    y = stock_data['price_change']
+    model = sm.OLS(y, X).fit()
+
+    return model
+
+def compare_self_vs_cross_impact(data, stock_a, stock_b, lag='50ms'):
     """
-    Plot R-squared values for different lags.
+    Compare self-impact (stock_a → stock_a) vs. cross-impact (stock_a → stock_b).
     """
-    plt.figure(figsize=(10, 6))
-    plt.plot(lags, r_squared_values, marker='o')
-    plt.title(f'R-squared vs. Lag for {stock_a} → {stock_b}')
-    plt.xlabel('Lag Interval')
-    plt.ylabel('R-squared')
-    plt.grid(True)
+    # Analyze self-impact
+    self_model = self_impact(data, stock_a, lag=lag)
+    if self_model is not None:
+        self_r_squared = self_model.rsquared
+        print(f"Self-Impact R-squared ({stock_a} → {stock_a}): {self_r_squared}")
+    else:
+        self_r_squared = None
 
-    # Save to the plots subfolder
-    output_path = os.path.join(plots_folder, f'r_squared_vs_lag_{stock_a}_to_{stock_b}.png')
-    plt.savefig(output_path)
-    plt.close()
-    print(f"Plot saved to: {output_path}")
+    # Analyze cross-impact
+    cross_model = lagged_cross_impact(data, stock_a, stock_b, lag=lag)
+    if cross_model is not None:
+        cross_r_squared = cross_model.rsquared
+        print(f"Cross-Impact R-squared ({stock_a} → {stock_b}): {cross_r_squared}")
+    else:
+        cross_r_squared = None
 
-# Main function
+    # Save comparison results
+    if self_r_squared is not None and cross_r_squared is not None:
+        with open(os.path.join(self_vs_cross_folder, f'self_vs_cross_impact_{stock_a}_to_{stock_b}_{lag}.txt'), 'w') as f:
+            f.write(f"Self-Impact R-squared ({stock_a} → {stock_a}): {self_r_squared}\n")
+            f.write(f"Cross-Impact R-squared ({stock_a} → {stock_b}): {cross_r_squared}\n")
+
+        # Visualize comparison
+        plt.figure(figsize=(8, 6))
+        plt.bar(['Self-Impact', 'Cross-Impact'], [self_r_squared, cross_r_squared], color=['blue', 'orange'])
+        plt.title(f'Self-Impact vs. Cross-Impact: {stock_a} → {stock_b} (lag={lag})')
+        plt.ylabel('R-squared')
+        plt.grid(True)
+        plt.savefig(os.path.join(self_vs_cross_folder, f'self_vs_cross_impact_{stock_a}_to_{stock_b}_{lag}.png'))
+        plt.close()
+
 def main():
     freeze_support()  # Required for Windows/macOS
 
@@ -193,46 +210,14 @@ def main():
         # Define a list of lags to test
         lags_to_test = ['50ms', '100ms', '500ms', '1s', '5s', '10s', '1min', '5min']
 
-        # Dictionary to store the best lag for each stock pair
-        best_lags = {}
-
         # Analyze lagged cross-impact for all pairs of stocks
         for stock_a in stocks:
             for stock_b in stocks:
                 if stock_a != stock_b:
-                    r_squared_values = []
-                    closest_to_one = float('inf')  # Initialize with a large value
-                    best_lag = None
-                    best_model = None
-
+                    # Compare self-impact vs. cross-impact for each lag
                     for lag in lags_to_test:
-                        print(f"Analyzing lagged cross-impact: {stock_a} -> {stock_b} (lag={lag})")
-                        model = lagged_cross_impact(data, stock_a, stock_b, lag=lag)
-                        if model is not None:
-                            r_squared = model.rsquared
-                            r_squared_values.append(r_squared)
-                            # Debugging: Print R-squared and its difference from 1
-                            print(f"R-squared for {lag}: {r_squared}, Difference from 1: {abs(1 - r_squared)}")
-                            # Track the lag with R-squared closest to 1
-                            if abs(1 - r_squared) < closest_to_one:
-                                closest_to_one = abs(1 - r_squared)
-                                best_lag = lag
-                                best_model = model
-                                # Debugging: Print the current best lag and its R-squared
-                                print(f"New best lag: {best_lag}, R-squared: {r_squared}, Difference from 1: {closest_to_one}")
-
-                    # Save the best model for this stock pair
-                    if best_model is not None:
-                        save_regression_results(best_model, f'best_lagged_{stock_a}_to_{stock_b}_{best_lag}.txt')
-                        best_lags[f'{stock_a}_to_{stock_b}'] = best_lag
-
-                    # Visualize R-squared vs. Lag for this stock pair
-                    visualize_r_squared(lags_to_test, r_squared_values, stock_a, stock_b)
-
-        # Print the best lags for each stock pair
-        print("Best lags for each stock pair (R-squared closest to 1):")
-        for pair, lag in best_lags.items():
-            print(f"{pair}: {lag}")
+                        print(f"Comparing self-impact vs. cross-impact: {stock_a} → {stock_b} (lag={lag})")
+                        compare_self_vs_cross_impact(data, stock_a, stock_b, lag=lag)
 
         print("Analysis complete. Results saved to:", output_folder)
 
