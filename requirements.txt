@@ -5,3 +5,5 @@ matplotlib
 seaborn
 statsmodels
 jupyter
+dask[dataframe]
+dask[distributed]
