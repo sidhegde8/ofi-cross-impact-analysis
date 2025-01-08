@@ -102,7 +102,7 @@ The results of the analysis are saved in the results/ filder, organized into sub
 - Lagged Cross-Impact: Regression results, R-squared plots, and best lag analysis.
 - Sector-Level Analysis: Heatmaps and summary statistics for sector-level cross-impact.
 - Feature Importance: Bar plots and tables showing the importance of OFI, volume, and volatility.
-
+```bash
 project/
 ├── data/                   
 │   ├── raw/                # Raw data files
@@ -124,3 +124,4 @@ project/
 │   ├── feature_importance/
 ├── README.md               # Detailed instructions on how to run the code
 ├── requirements.txt        # List of Python packages used in the project
+```
