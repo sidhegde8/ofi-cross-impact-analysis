@@ -13,13 +13,13 @@ The project is implemented in Python and uses high-frequency equity market data 
 ## Table of Contents
 1. [Project Overview](#project-overview)
 2. [Dataset](#dataset)
-3. [Setup](#setup)
-4. [Running the Analysis](#running-the-analysis)
-5. [Folder Structure](#folder-structure)
-6. [Results](#results)
-7. [Key Findings](#key-findings)
-8. [References](#references)
-9. [Running on Google Cloud VM](#running-on-google-cloud-vm)
+3. [Running on Google Cloud VM](#running-on-google-cloud-vm)
+4. [Setup](#setup)
+5. [Running the Analysis](#running-the-analysis)
+6. [Folder Structure](#folder-structure)
+7. [Results](#results)
+8. [Key Findings](#key-findings)
+9. [References](#references)
 
 ---
 
