@@ -63,3 +63,64 @@ Install the required Python packages that are essential for running the code:
 pip install -r requirements.txt
 ```
 ## Running the Analysis
+### 1. Preprocess the Data
+Run the data preprocessing script to clean and prepare the data:
+```bash
+python scripts/data_preprocessing.py
+```
+This will generate cleaned data files in the data/cleaned folder.
+### 2. Compute OFI Metrics
+Compute multi-level OFI metrics and integrate them using PCA:
+```bash
+python scripts/compute_ofi.py
+```
+This will generate processed data files in the data/processed folder.
+### Run Cross-Impact Analysis
+- Contemporaneuous Cross-Impact:
+```bash
+python scripts/contemp_cross_impact.py
+```
+- Lagged Cross-Impact:
+```bash
+python scripts/cross_impact_linear.py
+```
+- Lagged Random Forest Model:
+```bash
+python scripts/cross_impact_forest.py
+```
+### 4. Analyze Sector-Level Cross-Impact
+```bash
+python scripts/sector_cross_impact.py
+```
+### 5. Perform Feature Importance Analysis
+```bash
+python scripts/feature_importance.py
+```
+## Results
+The results of the analysis are saved in the results/ filder, organized into subfolders:
+- Contemporaneous Cross-Impact: Regression results, visualizations, and summary statistics.
+- Lagged Cross-Impact: Regression results, R-squared plots, and best lag analysis.
+- Sector-Level Analysis: Heatmaps and summary statistics for sector-level cross-impact.
+- Feature Importance: Bar plots and tables showing the importance of OFI, volume, and volatility.
+
+project/
+├── data/                   
+│   ├── raw/                # Raw data files
+│   ├── cleaned/            # Cleaned data files
+│   ├── processed/          # Processed data files (OFI metrics, PCA)
+|   ├── parquet/            # Processed data converted to parquet
+├── scripts/                # Python scripts for modular implementations
+│   ├── compute_ofi.py      # Compute OFI metrics and integrate using PCA
+│   ├── data_preprocessing.py # Clean and preprocess raw data
+│   ├── contemp_cross_impact.py # Contemporaneous cross-impact analysis
+│   ├── cross_impact_linear.py # Lagged cross-impact analysis using linear regression
+│   ├── cross_impact_forest.py # Lagged cross-impact analysis using Random Forest
+│   ├── sector_cross_impact.py # Sector-level cross-impact analysis
+│   ├── feature_importance.py # Feature importance analysis using Random Forest
+├── results/                # Outputs (e.g., figures, tables, analysis results)
+│   ├── contemporaneous_cross_impact/
+│   ├── lagged_linear/
+│   ├── sector_analysis/
+│   ├── feature_importance/
+├── README.md               # Detailed instructions on how to run the code
+├── requirements.txt        # List of Python packages used in the project
