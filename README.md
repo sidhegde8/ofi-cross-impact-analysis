@@ -49,7 +49,34 @@ The data includes:
 The data can be obtained from [Databento](https://databento.com/) using the Nasdaq TotalView-ITCH catalog and the MBP-10 schema.
 
 ---
+## Running on Google Cloud VM
+This project involves processing high-frequency equity market data, which is computationally intensive and requires significant memory and processing power. Running the analysis on a local machine may be infeasible due to hardware limitations. Therefore, it is imperative to run this project on a Google Cloud VM with sufficient resources.
 
+Steps to set up a Google Cloud VM
+1. Create a Google Cloud Account:
+   - If you don't already have one, sign up for a Google Cloud account.
+2. Create a VM Instance:
+   - Go to the Google Cloud Console.
+   - Navigate to Compute Engine > VM Instances.
+   - Click Create Instance
+   - Choose a machine type with sufficient resources (I chose n2-standard-8 as it has 32 GB of RAM)
+   - Ensure the VM has at least 32 GB of RAM and 8 CPU cores.
+   - Select a boot disk with Ubuntu 20.04 LTS
+   - Enable HTTP/HTTPS traffic
+3. SSH Into the VM:
+   - Once the VM is created, you can click the SSH button to connect to the instance
+4.  Transfer Data to the VM:
+   - Use scp to transfer your data to the VM:
+     ```bash
+     scp -r /path/to/local/data [USERNAME]@[VM_IP]:/path/to/remote/data
+     ```
+5. Set up the Environment
+   - Install Python:
+     ```bash
+     sudo apt update
+     sudo apt install python3 python3-pip
+     ```
+---
 ## Setup
 
 ### 1. Clone the Repository
@@ -96,6 +123,7 @@ python scripts/sector_cross_impact.py
 ```bash
 python scripts/feature_importance.py
 ```
+---
 ## Results
 The results of the analysis are saved in the results/ filder, organized into subfolders:
 - Contemporaneous Cross-Impact: Regression results, visualizations, and summary statistics.
