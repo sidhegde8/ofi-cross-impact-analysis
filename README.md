@@ -87,10 +87,10 @@ project/
 │   ├── compute_ofi.py      # Compute OFI metrics and integrate using PCA
 │   ├── data_preprocessing.py # Clean and preprocess raw data
 │   ├── convert_to_parquet.py # Convert csv to Parquet
-│   ├── contemp_cross_impact.py # Contemporaneous cross-impact analysis
+│   ├── contemp_cross_impact.py # Contemporaneous cross-impact analysis using Random Forest
 │   ├── lag_cross_impact_forest.py # Lagged cross-impact analysis using Random Forest
-│   ├── sector_cross_impact.py # Sector-level cross-impact analysis
-│   ├── feature_importance.py # Feature importance analysis using Random Forest
+│   ├── sector_cross_impact.py # Sector-level cross-impact analysis for lag
+│   ├── feature_importance.py # Feature importance analysis for lag
 ├── results/                # Outputs (e.g., figures, tables, analysis results)
 ├── requirements.txt        # List of Python packages used in the project
 ```
