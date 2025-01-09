@@ -94,6 +94,7 @@ pip install -r requirements.txt
 Run the data preprocessing script to clean and prepare the data:
 ```bash
 python scripts/data_preprocessing.py
+python scripts/convert_to_parquet.py
 ```
 This will generate cleaned data files in the data/cleaned folder.
 ### 2. Compute OFI Metrics
@@ -107,15 +108,11 @@ This will generate processed data files in the data/processed folder.
 ```bash
 python scripts/contemp_cross_impact.py
 ```
-- Lagged Cross-Impact:
+- Lagged Cross Impact
 ```bash
-python scripts/cross_impact_linear.py
+python scripts/lag_cross_impact_forest.py
 ```
-- Lagged Random Forest Model:
-```bash
-python scripts/cross_impact_forest.py
-```
-### 4. Analyze Sector-Level Cross-Impact
+### 4. Analyze Sector-Level Cross-Impact(For Lag)
 ```bash
 python scripts/sector_cross_impact.py
 ```
@@ -147,9 +144,7 @@ project/
 │   ├── feature_importance.py # Feature importance analysis using Random Forest
 ├── results/                # Outputs (e.g., figures, tables, analysis results)
 │   ├── contemporaneous_cross_impact/
-│   ├── lagged_linear/
-│   ├── sector_analysis/
-│   ├── feature_importance/
+│   ├── Lagged_Cross_Impact/
 ├── README.md               # Detailed instructions on how to run the code
 ├── requirements.txt        # List of Python packages used in the project
 ```
