@@ -1,2 +1,0 @@
-Self-Impact R-squared (JPM → JPM): 8.356003035614457e-06
-Cross-Impact R-squared (JPM → AMGN): 1.0387529236766113e-07

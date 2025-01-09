@@ -1,2 +1,0 @@
-Self-Impact R-squared (AAPL → AAPL): 1.7198971935528107e-07
-Cross-Impact R-squared (AAPL → JPM): 1.0689814083919558e-05
