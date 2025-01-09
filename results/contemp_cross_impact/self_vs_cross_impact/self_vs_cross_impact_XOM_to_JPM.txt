@@ -1,2 +1,0 @@
-Self-Impact R-squared (XOM → XOM): 1.5173796530376649e-07
-Cross-Impact R-squared (XOM → JPM): 1.0075601892256536e-05
