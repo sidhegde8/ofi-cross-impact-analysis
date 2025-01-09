@@ -139,8 +139,6 @@ python scripts/feature_importance.py
 ```
 ---
 ## Results
-The results of the analysis are saved in the results/ filder, organized into subfolders:
+The results of the analysis are saved in the results/folder, organized into subfolders:
 - Contemporaneous Cross-Impact: Regression results, visualizations, and summary statistics.
 - Lagged Cross-Impact: Regression results, R-squared plots, and best lag analysis.
-- Sector-Level Analysis: Heatmaps and summary statistics for sector-level cross-impact.
-- Feature Importance: Bar plots and tables showing the importance of OFI, volume, and volatility.
