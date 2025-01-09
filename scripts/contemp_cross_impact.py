@@ -1,44 +1,37 @@
-import os
-import pandas as pd
 import dask.dataframe as dd
-import statsmodels.api as sm
-import matplotlib.pyplot as plt
-import seaborn as sns
+import pandas as pd
+import numpy as np
+import os
 from dask.distributed import Client, LocalCluster
 from multiprocessing import freeze_support
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
 
 # Set up directories
-input_folder = 'data/parquet'  # Folder containing processed Parquet files
-output_folder = 'results/contemporaneous_cross_impact'  # Main folder for results
+input_folder = 'data/parquet'
+output_folder = 'results/contemporaneous_cross_impact'
 
-# Create subfolders for organized results
-subfolders = [
-    'regression_results',  # For regression results (text files)
-    'visualizations',      # For scatter plots and visualizations
-    'summary_statistics',  # For aggregated results or summary statistics
-    'self_vs_cross_impact' # For self-impact vs. cross-impact comparisons
-]
+# Create subfolder for generalized results
+generalized_results_folder = os.path.join(output_folder, 'generalized_results')
+os.makedirs(generalized_results_folder, exist_ok=True)
 
-for folder in subfolders:
-    os.makedirs(os.path.join(output_folder, folder), exist_ok=True)
-
+# Initialize Dask client
 def initialize_dask_client():
     """
     Initialize a Dask client with a LocalCluster.
     Adjust the number of workers and memory limits based on your VM's resources.
     """
-    cluster = LocalCluster(
-        n_workers=8,  # Adjust based on your system's resources
-        threads_per_worker=2,  # Adjust based on your CPU cores
-        memory_limit='16GB',  # Adjust based on your system's available RAM
-        processes=True  # Use separate processes for each worker
-    )
+    cluster = LocalCluster(n_workers=8, threads_per_worker=2, memory_limit='16GB')  # Adjust as needed
     client = Client(cluster)
     return client
 
+# Load processed data using Dask
 def load_processed_data(input_folder):
     """
-    Load processed Parquet files from the input folder using Dask.
+    Load all processed Parquet files from the input folder using Dask.
     """
     processed_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith('.parquet')]
     print("Parquet files found:", processed_files)
@@ -46,7 +39,7 @@ def load_processed_data(input_folder):
     if not processed_files:
         raise FileNotFoundError("No Parquet files found in the directory.")
 
-    # Read Parquet files using Dask
+    # Read Parquet files
     data = dd.read_parquet(processed_files)
 
     # Print column names for debugging
@@ -67,6 +60,7 @@ def load_processed_data(input_folder):
 
     return data
 
+# Process data in chunks
 def process_chunk(chunk):
     """
     Process a chunk of data:
@@ -99,15 +93,47 @@ def process_chunk(chunk):
 
     return chunk
 
-def contemporaneous_cross_impact(data, stock_a, stock_b):
+# Analyze self-impact using Random Forest
+def self_impact(data, stock):
     """
-    Analyze the contemporaneous cross-impact of OFI on price changes.
+    Analyze the self-impact of a stock's OFI on its own price changes using Random Forest.
+    """
+    # Filter data for the stock
+    stock_data = data[data['symbol'] == stock][['ts_recv', 'ofi_pca', 'volume', 'volatility', 'price_change']]
+
+    # Drop rows with NaN values
+    stock_data = stock_data.dropna()
+
+    # Features and target
+    X = stock_data[['ofi_pca', 'volume', 'volatility']]  # Independent variables: OFI, volume, volatility
+    y = stock_data['price_change']  # Dependent variable: Price change
+
+    # Split into training and validation sets
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train a Random Forest model
+    model = RandomForestRegressor(n_estimators=75, n_jobs=-1, random_state=42)
+    model.fit(X_train, y_train)
+
+    # Calculate R-squared on the validation set
+    r_squared = r2_score(y_val, model.predict(X_val))
+    print(f"Self-impact R-squared for {stock}: {r_squared}")
+
+    # Extract feature importance
+    feature_importance = model.feature_importances_[0]  # Importance of OFI_PCA
+
+    return feature_importance, r_squared
+
+# Analyze cross-impact using Random Forest
+def cross_impact(data, stock_a, stock_b):
+    """
+    Analyze the cross-impact of one stock's OFI on another stock's price changes using Random Forest.
     """
     # Filter data for the two stocks
-    stock_a_data = data[data['symbol'] == stock_a][['ts_recv', 'ofi_pca']]
+    stock_a_data = data[data['symbol'] == stock_a][['ts_recv', 'ofi_pca', 'volume', 'volatility']]
     stock_b_data = data[data['symbol'] == stock_b][['ts_recv', 'price_change']]
 
-    # Merge the two datasets on the nearest timestamp using pd.merge_asof
+    # Merge the two datasets on the nearest timestamp
     merged_data = pd.merge_asof(
         stock_a_data.sort_values('ts_recv'),
         stock_b_data.sort_values('ts_recv'),
@@ -118,136 +144,81 @@ def contemporaneous_cross_impact(data, stock_a, stock_b):
     # Drop rows with NaN values
     merged_data = merged_data.dropna()
 
-    # Check if merged_data is empty
-    if merged_data.empty:
-        print(f"Warning: No overlapping data found for {stock_a} → {stock_b}. Skipping regression.")
-        return None, None
-
-    # Check if there is sufficient variation in the data
-    if merged_data['price_change'].nunique() < 2 or merged_data['ofi_pca'].nunique() < 2:
-        print(f"Warning: Insufficient variation in data for {stock_a} → {stock_b}. Skipping regression.")
-        return None, None
-
-    # Perform regression
-    X = sm.add_constant(merged_data['ofi_pca'])  # Independent variable: OFI of stock_a
+    # Features and target
+    X = merged_data[['ofi_pca', 'volume', 'volatility']]  # Independent variables: OFI, volume, volatility
     y = merged_data['price_change']  # Dependent variable: Price change of stock_b
-    model = sm.OLS(y, X).fit()
 
-    return model, merged_data
+    # Split into training and validation sets
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-def self_impact(data, stock):
+    # Train a Random Forest model
+    model = RandomForestRegressor(n_estimators=75, n_jobs=-1, random_state=42)
+    model.fit(X_train, y_train)
+
+    # Calculate R-squared on the validation set
+    r_squared = r2_score(y_val, model.predict(X_val))
+    print(f"Cross-impact R-squared for {stock_a} → {stock_b}: {r_squared}")
+
+    # Extract feature importance
+    feature_importance = model.feature_importances_[0]  # Importance of OFI_PCA
+
+    return feature_importance, r_squared
+
+# Save generalized results
+def save_generalized_results(results_df, generalized_results_folder):
     """
-    Analyze the contemporaneous self-impact of OFI on price changes.
+    Save generalized results to a CSV file.
     """
-    # Filter data for the stock
-    stock_data = data[data['symbol'] == stock][['ts_recv', 'ofi_pca', 'price_change']]
+    csv_filename = os.path.join(generalized_results_folder, 'generalized_results.csv')
+    results_df.to_csv(csv_filename, index=False)
+    print(f"Generalized results saved to: {csv_filename}")
 
-    # Drop rows with NaN values
-    stock_data = stock_data.dropna()
-
-    # Check if there is sufficient variation in the data
-    if stock_data['price_change'].nunique() < 2 or stock_data['ofi_pca'].nunique() < 2:
-        print(f"Warning: Insufficient variation in data for {stock} → {stock}. Skipping regression.")
-        return None, None
-
-    # Perform regression
-    X = sm.add_constant(stock_data['ofi_pca'])  # Independent variable: OFI of stock
-    y = stock_data['price_change']  # Dependent variable: Price change of stock
-    model = sm.OLS(y, X).fit()
-
-    return model, stock_data
-
-def compare_self_vs_cross_impact(data, stock_a, stock_b):
-    """
-    Compare self-impact (stock_a → stock_a) vs. cross-impact (stock_a → stock_b).
-    """
-    # Analyze self-impact
-    self_model, self_data = self_impact(data, stock_a)
-    if self_model is not None:
-        self_r_squared = self_model.rsquared
-        print(f"Self-Impact R-squared ({stock_a} → {stock_a}): {self_r_squared}")
-    else:
-        self_r_squared = None
-
-    # Analyze cross-impact
-    cross_model, cross_data = contemporaneous_cross_impact(data, stock_a, stock_b)
-    if cross_model is not None:
-        cross_r_squared = cross_model.rsquared
-        print(f"Cross-Impact R-squared ({stock_a} → {stock_b}): {cross_r_squared}")
-    else:
-        cross_r_squared = None
-
-    # Save comparison results
-    if self_r_squared is not None and cross_r_squared is not None:
-        with open(os.path.join(output_folder, 'self_vs_cross_impact', f'self_vs_cross_impact_{stock_a}_to_{stock_b}.txt'), 'w') as f:
-            f.write(f"Self-Impact R-squared ({stock_a} → {stock_a}): {self_r_squared}\n")
-            f.write(f"Cross-Impact R-squared ({stock_a} → {stock_b}): {cross_r_squared}\n")
-
-        # Visualize comparison
-        plt.figure(figsize=(8, 6))
-        plt.bar(['Self-Impact', 'Cross-Impact'], [self_r_squared, cross_r_squared], color=['blue', 'orange'])
-        plt.title(f'Self-Impact vs. Cross-Impact: {stock_a} → {stock_b}')
-        plt.ylabel('R-squared')
-        plt.grid(True)
-        plt.savefig(os.path.join(output_folder, 'self_vs_cross_impact', f'self_vs_cross_impact_{stock_a}_to_{stock_b}.png'))
-        plt.close()
-
+# Main function
 def main():
-    freeze_support()  # Required for Windows/macOS
-
-    # Initialize Dask client
+    freeze_support()
     client = initialize_dask_client()
 
     try:
-        # Load processed data
-        print("Loading processed data...")
+        stocks = ['AAPL', 'AMGN', 'TSLA', 'JPM', 'XOM']
+        print("Loading data using Dask...")
         data = load_processed_data(input_folder)
 
-        # Process data in chunks
         print("Processing data in chunks...")
         data = data.map_partitions(process_chunk).compute()
 
-        # List of stocks to analyze
-        stocks = ['AAPL', 'AMGN', 'TSLA', 'JPM', 'XOM']
+        results = []
 
-        # Analyze contemporaneous cross-impact for all pairs of stocks
+        # Analyze self-impact for each stock
+        for stock in stocks:
+            print(f"Analyzing self-impact for {stock}...")
+            try:
+                feature_importance, r_squared = self_impact(data, stock)
+                results.append((stock, stock, feature_importance, r_squared, 'Self-Impact'))
+            except Exception as e:
+                print(f"Error analyzing self-impact for {stock}: {str(e)}")
+
+        # Analyze cross-impact for all stock pairs
         for stock_a in stocks:
             for stock_b in stocks:
                 if stock_a != stock_b:
-                    print(f"Analyzing contemporaneous cross-impact: {stock_a} → {stock_b}")
+                    print(f"Analyzing cross-impact: {stock_a} → {stock_b}")
                     try:
-                        # Perform regression analysis
-                        model, merged_data = contemporaneous_cross_impact(data, stock_a, stock_b)
-                        
-                        if model is not None and merged_data is not None:
-                            # Save regression results
-                            save_regression_results(model, stock_a, stock_b, output_folder)
-                            
-                            # Save summary statistics
-                            save_summary_statistics(merged_data, stock_a, stock_b, output_folder)
-                            
-                            # Visualize the relationship
-                            visualize_contemporaneous_impact(model, merged_data, stock_a, stock_b, output_folder)
-                            
-                            print(f"Results saved for {stock_a} → {stock_b}")
-                        else:
-                            print(f"Skipping {stock_a} → {stock_b} due to insufficient data.")
+                        feature_importance, r_squared = cross_impact(data, stock_a, stock_b)
+                        results.append((stock_a, stock_b, feature_importance, r_squared, 'Cross-Impact'))
                     except Exception as e:
-                        print(f"Error analyzing {stock_a} → {stock_b}: {str(e)}")
+                        print(f"Error analyzing cross-impact for {stock_a} → {stock_b}: {str(e)}")
 
-        # Compare self-impact vs. cross-impact for all pairs of stocks
-        for stock_a in stocks:
-            for stock_b in stocks:
-                if stock_a != stock_b:
-                    print(f"Comparing self-impact vs. cross-impact: {stock_a} → {stock_b}")
-                    compare_self_vs_cross_impact(data, stock_a, stock_b)
+        # Convert results to a DataFrame
+        results_df = pd.DataFrame(results, columns=['Stock_A', 'Stock_B', 'Feature_Importance', 'R_Squared', 'Impact_Type'])
 
-        print("Contemporaneous cross-impact analysis complete. Results saved to:", output_folder)
+        # Save generalized results
+        save_generalized_results(results_df, generalized_results_folder)
 
-    except KeyboardInterrupt:
-        print("Script interrupted by user.")
+        print("Contemporaneous cross-impact analysis complete. Results saved to:", generalized_results_folder)
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
     finally:
-        # Shut down the Dask client
         client.close()
         print("Dask client shut down.")
 
