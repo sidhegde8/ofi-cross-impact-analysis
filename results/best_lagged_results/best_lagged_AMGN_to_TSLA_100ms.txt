@@ -1,6 +1,0 @@
-Random Forest Model Summary:
-R-squared: 0.24371999191290616
-Feature Importances:
-ofi_pca_lagged: 0.4188431872567095
-volume: 0.27444146525308094
-volatility: 0.3067153474902095
