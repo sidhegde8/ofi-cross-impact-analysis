@@ -78,6 +78,23 @@ Steps to set up a Google Cloud VM
      ```
 ---
 ## Setup
+This should be what your starting directory should look like:
+```bash
+project/
+├── data/                   
+│   ├── raw/                # Raw data files
+├── scripts/                # Python scripts for modular implementations
+│   ├── compute_ofi.py      # Compute OFI metrics and integrate using PCA
+│   ├── data_preprocessing.py # Clean and preprocess raw data
+│   ├── convert_to_parquet.py # Convert csv to Parquet
+│   ├── contemp_cross_impact.py # Contemporaneous cross-impact analysis
+│   ├── lag_cross_impact_forest.py # Lagged cross-impact analysis using Random Forest
+│   ├── sector_cross_impact.py # Sector-level cross-impact analysis
+│   ├── feature_importance.py # Feature importance analysis using Random Forest
+├── results/                # Outputs (e.g., figures, tables, analysis results)
+├── requirements.txt        # List of Python packages used in the project
+```
+
 
 ### 1. Clone the Repository
 ```bash
@@ -127,24 +144,3 @@ The results of the analysis are saved in the results/ filder, organized into sub
 - Lagged Cross-Impact: Regression results, R-squared plots, and best lag analysis.
 - Sector-Level Analysis: Heatmaps and summary statistics for sector-level cross-impact.
 - Feature Importance: Bar plots and tables showing the importance of OFI, volume, and volatility.
-```bash
-project/
-├── data/                   
-│   ├── raw/                # Raw data files
-│   ├── cleaned/            # Cleaned data files
-│   ├── processed/          # Processed data files (OFI metrics, PCA)
-|   ├── parquet/            # Processed data converted to parquet
-├── scripts/                # Python scripts for modular implementations
-│   ├── compute_ofi.py      # Compute OFI metrics and integrate using PCA
-│   ├── data_preprocessing.py # Clean and preprocess raw data
-│   ├── contemp_cross_impact.py # Contemporaneous cross-impact analysis
-│   ├── cross_impact_linear.py # Lagged cross-impact analysis using linear regression
-│   ├── cross_impact_forest.py # Lagged cross-impact analysis using Random Forest
-│   ├── sector_cross_impact.py # Sector-level cross-impact analysis
-│   ├── feature_importance.py # Feature importance analysis using Random Forest
-├── results/                # Outputs (e.g., figures, tables, analysis results)
-│   ├── contemporaneous_cross_impact/
-│   ├── Lagged_Cross_Impact/
-├── README.md               # Detailed instructions on how to run the code
-├── requirements.txt        # List of Python packages used in the project
-```
