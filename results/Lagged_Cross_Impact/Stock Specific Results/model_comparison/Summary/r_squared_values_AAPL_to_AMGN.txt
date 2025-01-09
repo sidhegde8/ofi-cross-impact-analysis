@@ -1,0 +1,25 @@
+R-squared values for each lag:
+50ms:
+  Baseline (OFI Only): 0.5959711542153047
+  Enhanced (OFI + Features): 0.7820568828670384
+100ms:
+  Baseline (OFI Only): 0.5963532386846044
+  Enhanced (OFI + Features): 0.7818755842462101
+500ms:
+  Baseline (OFI Only): 0.5942523375045168
+  Enhanced (OFI + Features): 0.779555434780957
+1s:
+  Baseline (OFI Only): 0.5953357609294185
+  Enhanced (OFI + Features): 0.778632151012929
+5s:
+  Baseline (OFI Only): 0.5959926629398948
+  Enhanced (OFI + Features): 0.7820597408332803
+10s:
+  Baseline (OFI Only): 0.5836536813402262
+  Enhanced (OFI + Features): 0.769723671429658
+1min:
+  Baseline (OFI Only): 0.560644031466067
+  Enhanced (OFI + Features): 0.7577404276218613
+5min:
+  Baseline (OFI Only): 0.5396364756282062
+  Enhanced (OFI + Features): 0.7379795010284425
