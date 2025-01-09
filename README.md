@@ -112,11 +112,11 @@ python scripts/contemp_cross_impact.py
 ```bash
 python scripts/lag_cross_impact_forest.py
 ```
-### 4. Analyze Sector-Level Cross-Impact(For Lag)
+### 4. Analyze Sector-Level Cross-Impact (For Lag)
 ```bash
 python scripts/sector_cross_impact.py
 ```
-### 5. Perform Feature Importance Analysis
+### 5. Perform Feature Importance Analysis (For Lag)
 ```bash
 python scripts/feature_importance.py
 ```
