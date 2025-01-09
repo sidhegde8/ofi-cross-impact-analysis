@@ -2,9 +2,9 @@
 
 This project analyzes the cross-impact of **Order Flow Imbalance (OFI)** on short-term price changes across multiple stocks. The analysis includes:
 - Computation of multi-level OFI metrics and integration using **Principal Component Analysis (PCA)**.
-- **Contemporaneous** and **lagged cross-impact** analysis.
+- **Contemporaneous** and **lagged cross-impact** analysis using Random Forest models.
 - **Sector-level** cross-impact analysis.
-- **Feature importance** analysis using Random Forest models.
+- **Feature importance** analysis.
 
 The project is implemented in Python and uses high-frequency equity market data from the Nasdaq 100.
 
