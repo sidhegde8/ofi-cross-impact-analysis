@@ -5,14 +5,14 @@ import os
 from dask.distributed import Client, LocalCluster
 from multiprocessing import freeze_support
 import matplotlib.pyplot as plt
-import seaborn as sns
+import seaborn as sns  # Add this line
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split
 
 # Set up directories
-input_folder = 'data/parquet'
-output_folder = 'results/contemporaneous_cross_impact'
+input_folder = 'data/parquet'  # Update this path to your input folder
+output_folder = 'results/contemporaneous_cross_impact'  # Update this path to your output folder
 
 # Create subfolder for generalized results
 generalized_results_folder = os.path.join(output_folder, 'generalized_results')
@@ -93,41 +93,10 @@ def process_chunk(chunk):
 
     return chunk
 
-# Analyze self-impact using Random Forest
-def self_impact(data, stock):
+# Analyze contemporaneous cross-impact using Random Forest
+def contemporaneous_cross_impact(data, stock_a, stock_b):
     """
-    Analyze the self-impact of a stock's OFI on its own price changes using Random Forest.
-    """
-    # Filter data for the stock
-    stock_data = data[data['symbol'] == stock][['ts_recv', 'ofi_pca', 'volume', 'volatility', 'price_change']]
-
-    # Drop rows with NaN values
-    stock_data = stock_data.dropna()
-
-    # Features and target
-    X = stock_data[['ofi_pca', 'volume', 'volatility']]  # Independent variables: OFI, volume, volatility
-    y = stock_data['price_change']  # Dependent variable: Price change
-
-    # Split into training and validation sets
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Train a Random Forest model
-    model = RandomForestRegressor(n_estimators=75, n_jobs=-1, random_state=42)
-    model.fit(X_train, y_train)
-
-    # Calculate R-squared on the validation set
-    r_squared = r2_score(y_val, model.predict(X_val))
-    print(f"Self-impact R-squared for {stock}: {r_squared}")
-
-    # Extract feature importance
-    feature_importance = model.feature_importances_[0]  # Importance of OFI_PCA
-
-    return feature_importance, r_squared
-
-# Analyze cross-impact using Random Forest
-def cross_impact(data, stock_a, stock_b):
-    """
-    Analyze the cross-impact of one stock's OFI on another stock's price changes using Random Forest.
+    Analyze the contemporaneous cross-impact of OFI on price changes using Random Forest.
     """
     # Filter data for the two stocks
     stock_a_data = data[data['symbol'] == stock_a][['ts_recv', 'ofi_pca', 'volume', 'volatility']]
@@ -145,8 +114,8 @@ def cross_impact(data, stock_a, stock_b):
     merged_data = merged_data.dropna()
 
     # Features and target
-    X = merged_data[['ofi_pca', 'volume', 'volatility']]  # Independent variables: OFI, volume, volatility
-    y = merged_data['price_change']  # Dependent variable: Price change of stock_b
+    X = merged_data[['ofi_pca', 'volume', 'volatility']]  # Include additional features
+    y = merged_data['price_change']
 
     # Split into training and validation sets
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -157,12 +126,9 @@ def cross_impact(data, stock_a, stock_b):
 
     # Calculate R-squared on the validation set
     r_squared = r2_score(y_val, model.predict(X_val))
-    print(f"Cross-impact R-squared for {stock_a} → {stock_b}: {r_squared}")
+    print(f"R-squared for {stock_a} → {stock_b}: {r_squared}")
 
-    # Extract feature importance
-    feature_importance = model.feature_importances_[0]  # Importance of OFI_PCA
-
-    return feature_importance, r_squared
+    return model, r_squared, merged_data
 
 # Save generalized results
 def save_generalized_results(results_df, generalized_results_folder):
@@ -172,6 +138,24 @@ def save_generalized_results(results_df, generalized_results_folder):
     csv_filename = os.path.join(generalized_results_folder, 'generalized_results.csv')
     results_df.to_csv(csv_filename, index=False)
     print(f"Generalized results saved to: {csv_filename}")
+
+# Visualize feature importance
+def visualize_feature_importance(results_df, generalized_results_folder):
+    """
+    Create a heatmap of feature importance across stock pairs.
+    """
+    plt.figure(figsize=(10, 8))
+    pivot_table = results_df.pivot(index='Stock_A', columns='Stock_B', values='Feature_Importance')
+    
+    if not pivot_table.empty:
+        sns.heatmap(pivot_table, annot=True, cmap='coolwarm', center=0)
+        plt.title('Feature Importance of OFI on Price Changes')
+        plt.xlabel('Stock B')
+        plt.ylabel('Stock A')
+        plt.savefig(os.path.join(generalized_results_folder, 'general_heatmap_feature_importance.png'), bbox_inches='tight')
+        plt.close()
+    else:
+        print("Warning: Pivot table is empty. Skipping heatmap creation.")
 
 # Main function
 def main():
@@ -188,31 +172,35 @@ def main():
 
         results = []
 
-        # Analyze self-impact for each stock
-        for stock in stocks:
-            print(f"Analyzing self-impact for {stock}...")
-            try:
-                feature_importance, r_squared = self_impact(data, stock)
-                results.append((stock, stock, feature_importance, r_squared, 'Self-Impact'))
-            except Exception as e:
-                print(f"Error analyzing self-impact for {stock}: {str(e)}")
-
-        # Analyze cross-impact for all stock pairs
         for stock_a in stocks:
             for stock_b in stocks:
                 if stock_a != stock_b:
-                    print(f"Analyzing cross-impact: {stock_a} → {stock_b}")
+                    print(f"Analyzing contemporaneous cross-impact: {stock_a} → {stock_b}")
                     try:
-                        feature_importance, r_squared = cross_impact(data, stock_a, stock_b)
-                        results.append((stock_a, stock_b, feature_importance, r_squared, 'Cross-Impact'))
+                        # Perform analysis using Random Forest
+                        model, r_squared, merged_data = contemporaneous_cross_impact(data, stock_a, stock_b)
+                        
+                        if model is not None and merged_data is not None:
+                            # Extract feature importance
+                            feature_importance = model.feature_importances_[0]  # Importance of OFI_PCA
+                            mean_price_change = merged_data['price_change'].mean()
+                            mean_ofi = merged_data['ofi_pca'].mean()
+
+                            # Append results
+                            results.append((stock_a, stock_b, feature_importance, r_squared, mean_price_change, mean_ofi))
+                        else:
+                            print(f"Skipping {stock_a} → {stock_b} due to insufficient data.")
                     except Exception as e:
-                        print(f"Error analyzing cross-impact for {stock_a} → {stock_b}: {str(e)}")
+                        print(f"Error analyzing {stock_a} → {stock_b}: {str(e)}")
 
         # Convert results to a DataFrame
-        results_df = pd.DataFrame(results, columns=['Stock_A', 'Stock_B', 'Feature_Importance', 'R_Squared', 'Impact_Type'])
+        results_df = pd.DataFrame(results, columns=['Stock_A', 'Stock_B', 'Feature_Importance', 'R_Squared', 'Mean_Price_Change', 'Mean_OFI'])
 
         # Save generalized results
         save_generalized_results(results_df, generalized_results_folder)
+
+        # Visualize feature importance
+        visualize_feature_importance(results_df, generalized_results_folder)
 
         print("Contemporaneous cross-impact analysis complete. Results saved to:", generalized_results_folder)
 
